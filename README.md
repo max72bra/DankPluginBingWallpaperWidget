@@ -19,4 +19,5 @@ No settings required.
 
 ## Requirements
 
-- `Wallpaper of the Day daemon plugin` `inotify-tools`
+- `Wallpaper of the Day daemon plugin`
+- `inotify-tools`
