@@ -2,7 +2,7 @@
     "id": "wallpaperBingWidget",
     "name": "Wallpaper of the Day (Widget)",
     "description": "A new fresh daily wallpaper downloaded from a famous portal (Widget)",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "author": "maxb",
     "icon": "wallpaper",
     "type": "widget",
