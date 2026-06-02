@@ -8,7 +8,7 @@
     "type": "widget",
     "capabilities": ["dankbar-widget"],
     "component": "./BingwallWidget.qml",
-    "requires": "Wallpaper of the Day Plugin",
+    "requires": ["Wallpaper of the Day Plugin","inotify-tools"],
     "requires_dms": ">=1.4.0",
     "permissions": [
         "settings_read",
