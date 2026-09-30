@@ -35,14 +35,20 @@ PluginComponent {
     }
 
     // -------------------------------------------------------------------------
-    // Directory watcher — catches both normal and atomic writes from the daemon
+    // Directory watcher — catches both normal and atomic writes from the daemon.
+    // The directory is created first so the watcher works even if the daemon
+    // has never run; if inotifywait exits anyway, it is restarted after a delay.
     // -------------------------------------------------------------------------
     Process {
         id: bingwallDirWatcher
         running: true
-        command: ["inotifywait", "-q", "-m", "-e", "close_write,moved_to",
-                  "--format", "%f",
-                  Paths.strip(Paths.cache + "/bingwall/")]
+        command: ["sh", "-c",
+                  "mkdir -p \"$1\" && exec inotifywait -q -m -e close_write,moved_to --format %f \"$1\"",
+                  "sh", Paths.strip(Paths.cache + "/bingwall/")]
+        onExited: (exitCode, exitStatus) => {
+            console.warn("Wallpaper of the day: directory watcher exited with code", exitCode, "- restarting")
+            watcherRestartTimer.restart()
+        }
         stdout: SplitParser {
             onRead: line => {
                 const f = line.trim()
@@ -57,7 +63,20 @@ PluginComponent {
         }
     }
 
-    Component.onCompleted: {
+    Timer {
+        id: watcherRestartTimer
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            // Files may have changed while the watcher was down
+            root.reloadAll()
+            bingwallDirWatcher.running = true
+        }
+    }
+
+    Component.onCompleted: reloadAll()
+
+    function reloadAll() {
         Proc.runCommand(null, ["cat", Paths.strip(root.currentMetadataPath)],
             (output, exitCode) => { if (exitCode === 0) readMetadata(output) }, 0)
         Proc.runCommand(null, ["cat", Paths.strip(root.statusPath)],

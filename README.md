@@ -1,10 +1,13 @@
 # Wallpaper of the Day
 
-A fresh new daily wallpaper downloaded from a famous portal (Widget).
+Bar widget companion for the **Wallpaper of the Day** daemon plugin (`wallpaperBing`).
+It shows the current Bing wallpaper, title and description, and can ask the daemon to redownload.
+
+> **The Wallpaper of the Day daemon plugin must be installed and enabled.** Installed alone, this widget shows nothing.
 
 ## Features
 
-Download the daily image from Bing and set it as your desktop background.
+Displays the daily image downloaded by the daemon plugin and lets you force a refresh.
 
 ## Installation
 

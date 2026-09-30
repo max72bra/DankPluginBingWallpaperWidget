@@ -1,14 +1,19 @@
 {
     "id": "wallpaperBingWidget",
     "name": "Wallpaper of the Day (Widget)",
-    "description": "A new fresh daily wallpaper downloaded from a famous portal (Widget)",
-    "version": "1.0.1",
+    "description": "Bar widget for the Wallpaper of the Day plugin: shows the current Bing wallpaper, title and description. Requires the 'Wallpaper of the Day' daemon plugin installed and enabled.",
+    "version": "1.0.2",
     "author": "maxb",
     "icon": "wallpaper",
     "type": "widget",
-    "capabilities": ["dankbar-widget"],
+    "capabilities": [
+        "dankbar-widget"
+    ],
     "component": "./BingwallWidget.qml",
-    "requires": ["Wallpaper of the Day Plugin","inotify-tools"],
+    "requires": [
+        "Wallpaper of the Day Plugin",
+        "inotify-tools"
+    ],
     "requires_dms": ">=1.4.0",
     "permissions": [
         "settings_read",
