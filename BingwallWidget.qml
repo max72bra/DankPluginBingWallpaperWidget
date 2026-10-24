@@ -24,6 +24,10 @@ PluginComponent {
     property string currentDescription:   ""
     property bool   isDownloading:        false
 
+    // Consecutive watcher failures; reset whenever the watcher reports an event
+    property int    watcherRestarts:      0
+    readonly property int maxWatcherRestarts: 5
+
     // -------------------------------------------------------------------------
     // Force trigger writer
     // -------------------------------------------------------------------------
@@ -37,7 +41,8 @@ PluginComponent {
     // -------------------------------------------------------------------------
     // Directory watcher — catches both normal and atomic writes from the daemon.
     // The directory is created first so the watcher works even if the daemon
-    // has never run; if inotifywait exits anyway, it is restarted after a delay.
+    // has never run; if inotifywait exits anyway, it is restarted after a delay,
+    // giving up after maxWatcherRestarts consecutive failures (e.g. not installed).
     // -------------------------------------------------------------------------
     Process {
         id: bingwallDirWatcher
@@ -46,11 +51,16 @@ PluginComponent {
                   "mkdir -p \"$1\" && exec inotifywait -q -m -e close_write,moved_to --format %f \"$1\"",
                   "sh", Paths.strip(Paths.cache + "/bingwall/")]
         onExited: (exitCode, exitStatus) => {
+            if (++root.watcherRestarts > root.maxWatcherRestarts) {
+                console.error("Wallpaper of the day: directory watcher keeps failing (is inotify-tools installed?) - giving up")
+                return
+            }
             console.warn("Wallpaper of the day: directory watcher exited with code", exitCode, "- restarting")
             watcherRestartTimer.restart()
         }
         stdout: SplitParser {
             onRead: line => {
+                root.watcherRestarts = 0
                 const f = line.trim()
                 if (f === "metadata.json") {
                     Proc.runCommand(null, ["cat", Paths.strip(root.currentMetadataPath)],
@@ -148,172 +158,122 @@ PluginComponent {
     }
 
     // -------------------------------------------------------------------------
-    // Popout
+    // Popout — height follows content; Escape and padding are handled by the host
     // -------------------------------------------------------------------------
-    popoutWidth: 400
-    popoutHeight: 400
+    popoutWidth: 420
     popoutContent: Component {
-        Column {
-            id: contentColumn
-
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.margins: Theme.spacingM
-            bottomPadding: Theme.spacingL
-            spacing: Theme.spacingM
-
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_Escape) {
-                    closePopout()
-                    event.accepted = true
+        PopoutComponent {
+            headerText: I18n.tr("Wallpaper of the Day")
+            headerActions: Component {
+                DRefreshButton {
+                    buttonSize: 32
+                    iconSize: 18
+                    iconColor: Theme.surfaceText
+                    busy: root.isDownloading
+                    onClicked: root.requestForceDownload()
                 }
             }
 
-            // Header row
-            Item {
+            Column {
                 width: parent.width
-                height: 32
+                spacing: Theme.spacingM
 
-                StyledText {
-                    text: I18n.tr("Wallpaper of the Day")
-                    font.pixelSize: Theme.fontSizeLarge
-                    color: Theme.surfaceText
-                    font.weight: Font.Medium
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+                // Hero image with title overlay
+                Item {
+                    width: parent.width
+                    height: width * 9 / 16
 
-                Rectangle {
-                    width: 32
-                    height: 32
-                    radius: 16
-                    color: closeArea.containsMouse ? Theme.errorHover : "transparent"
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    DIcon {
-                        anchors.centerIn: parent
-                        name: "close"
-                        size: Theme.iconSize - 4
-                        color: closeArea.containsMouse ? Theme.error : Theme.surfaceText
-                    }
-
-                    MouseArea {
-                        id: closeArea
+                    Rectangle {
+                        id: heroMask
                         anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onPressed: closePopout()
-                    }
-                }
-            }
-
-            // Detail card
-            Rectangle {
-                id: bingwallDetail
-
-                width: parent.width
-                implicitHeight: detailColumn.implicitHeight + Theme.spacingM * 2
-                radius: Theme.cornerRadius
-                color: Theme.withAlpha(Theme.surfaceContainerHigh, Theme.popupTransparency)
-                border.color: Theme.outlineStrong
-                border.width: 1
-                clip: true
-
-                Column {
-                    id: detailColumn
-
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacingL
-                    spacing: Theme.spacingM
-
-                    // Title + refresh button
-                    Item {
-                        width: parent.width
-                        height: 30
-
-                        StyledText {
-                            id: bingwallTitle
-                            text: root.currentTitle
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.weight: Font.DemiBold
-                            color: Theme.surfaceText
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        DActionButton {
-                            id: refreshButton
-                            buttonSize: 28
-                            iconName: "refresh"
-                            iconSize: 18
-                            z: 15
-                            anchors.right: parent.right
-                            iconColor: Theme.surfaceText
-                            enabled: !root.isDownloading
-                            opacity: enabled ? 1.0 : 0.5
-                            onClicked: root.requestForceDownload()
-
-                            RotationAnimation {
-                                target: refreshButton
-                                property: "rotation"
-                                from: 0
-                                to: 360
-                                duration: 1000
-                                running: root.isDownloading
-                                loops: Animation.Infinite
-                                onRunningChanged: {
-                                    if (!running) refreshButton.rotation = 0
-                                }
-                            }
-                        }
-                    }
-
-                    // Wallpaper thumbnail
-                    StyledRect {
-                        width: parent.width
-                        height: parent.width * 9 / 16
                         radius: Theme.cornerRadius
-                        color: Theme.surfaceVariant
-                        border.color: Theme.outline
+                        color: "black"
+                        visible: false
+                        layer.enabled: true
+                    }
 
-                        CachingImage {
-                            id: bingwallImage
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            imagePath: root.currentImageSavePath ? "file://" + root.currentImageSavePath : ""
-                            fillMode: Image.PreserveAspectCrop
-                            maxCacheSize: 160
-                            layer.enabled: true
-                            layer.effect: MultiEffect {
-                                maskEnabled: true
-                                maskSource: wallpaperMask
-                                maskThresholdMin: 0.5
-                                maskSpreadAtMin: 1
-                            }
+                    Item {
+                        anchors.fill: parent
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            maskEnabled: true
+                            maskSource: heroMask
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 1
                         }
 
                         Rectangle {
-                            id: wallpaperMask
                             anchors.fill: parent
-                            anchors.margins: 1
-                            radius: Theme.cornerRadius - 1
-                            color: "black"
-                            visible: false
-                            layer.enabled: true
+                            color: Theme.surfaceContainerHigh
+                        }
+
+                        DIcon {
+                            anchors.centerIn: parent
+                            visible: !root.currentImageSavePath
+                            name: "wallpaper"
+                            size: 48
+                            color: Theme.surfaceVariantText
+                        }
+
+                        CachingImage {
+                            anchors.fill: parent
+                            imagePath: root.currentImageSavePath
+                            fillMode: Image.PreserveAspectCrop
+                            maxCacheSize: 512
+                            opacity: root.isDownloading ? 0.5 : 1.0
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: Theme.shortDuration }
+                            }
+                        }
+
+                        // Bottom scrim keeps the title readable on bright images
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: heroTitle.implicitHeight + Theme.spacingL * 2
+                            visible: root.currentTitle !== ""
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: "transparent" }
+                                GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.75) }
+                            }
+
+                            StyledText {
+                                id: heroTitle
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.margins: Theme.spacingM
+                                text: root.currentTitle
+                                color: "white"
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.weight: Font.DemiBold
+                                wrapMode: Text.WordWrap
+                                maximumLineCount: 2
+                                elide: Text.ElideRight
+                            }
                         }
                     }
 
-                    // Description
-                    StyledText {
-                        width: parent.width
-                        text: root.currentDescription
-                        font.pixelSize: Theme.fontSizeMedium
-                        color: Theme.surfaceVariantText
-                        wrapMode: Text.WordWrap
-                        clip: true
+                    DSpinner {
+                        anchors.centerIn: parent
+                        size: 40
+                        running: root.isDownloading
+                        visible: root.isDownloading
                     }
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: root.currentDescription
+                          || (root.currentImageSavePath ? "" : I18n.tr("No wallpaper downloaded yet"))
+                    visible: text !== ""
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.surfaceVariantText
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 8
+                    elide: Text.ElideRight
                 }
             }
         }
