@@ -3,7 +3,7 @@ import QtQuick.Effects
 import Quickshell.Io
 import qs.Common
 import qs.Services
-import qs.Widgets
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
 
 PluginComponent {
@@ -125,7 +125,7 @@ PluginComponent {
         Row {
             spacing: Theme.spacingXS
 
-            DankIcon {
+            DIcon {
                 anchors.verticalCenter: parent.verticalCenter
                 name: "wallpaper"
                 size: Theme.iconSize - 7
@@ -138,7 +138,7 @@ PluginComponent {
         Column {
             spacing: Theme.spacingXS
 
-            DankIcon {
+            DIcon {
                 anchors.horizontalCenter: parent.horizontalCenter
                 name: "wallpaper"
                 size: Theme.iconSize - 7
@@ -192,7 +192,7 @@ PluginComponent {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
 
-                    DankIcon {
+                    DIcon {
                         anchors.centerIn: parent
                         name: "close"
                         size: Theme.iconSize - 4
@@ -243,7 +243,7 @@ PluginComponent {
                             anchors.verticalCenter: parent.verticalCenter
                         }
 
-                        DankActionButton {
+                        DActionButton {
                             id: refreshButton
                             buttonSize: 28
                             iconName: "refresh"

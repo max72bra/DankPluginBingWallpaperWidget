@@ -22,5 +22,6 @@ No settings required.
 
 ## Requirements
 
+- `Dux Shell (DMS) >= 2.0.0`
 - `Wallpaper of the Day daemon plugin`
 - `inotify-tools`

@@ -2,7 +2,7 @@
     "id": "wallpaperBingWidget",
     "name": "Wallpaper of the Day (Widget)",
     "description": "Bar widget for the Wallpaper of the Day plugin: shows the current Bing wallpaper, title and description. Requires the 'Wallpaper of the Day' daemon plugin installed and enabled.",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "author": "maxb",
     "icon": "wallpaper",
     "type": "widget",
@@ -14,7 +14,7 @@
         "Wallpaper of the Day Plugin",
         "inotify-tools"
     ],
-    "requires_dms": ">=1.4.0",
+    "requires_dms": ">=2.0.0",
     "permissions": [
         "settings_read",
         "process"
